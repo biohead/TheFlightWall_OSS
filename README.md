@@ -1,160 +1,180 @@
-# TheFlightWall
+# TheFlightWall 
 
-TheFlightWall is an ESP32-powered HUB75 LED display that shows live flight information for aircraft passing over your location — airline, route, aircraft type, registration, altitude, speed, and a bearing arrow pointing toward the plane.
+TheFlightWall is an LED wall which shows live information of flights going by your window.
 
-Check out the build video: [instagram.com/p/DLIbAtbJxPl](https://www.instagram.com/p/DLIbAtbJxPl)
+![Main Image](images/British.jpg)
 
-**Don't want to build one? Grab the official kit at [theflightwall.com](https://theflightwall.com)**
+This fork has two primary purposes:
+1) Change the interface to a HUB75 screen
+2) Use local data from an ADSB receiver (running tar1090)
 
-![Main Image](images/main-image.png)
+It also adds a working logo lookup (locally stored on the ESP32) as well as a WebUI for some basic settings and display preview.
 
----
+It retains the links to OpenSky Network (Free API) and AeroAPI (Paid API) but both are optional.
+It introduces hexdb.io lookups to try and replace AeroAPI calls where possible.
 
-## What's on screen
+This has shamelessly been put together with the help of a free trial of Claude Code... 
+It likely could do with lots of refinement, especially around more efficient API calls - be warned if using the paid AeroAPI calls.
 
-Each flight card shows:
+The original project has an official product available:
 
-```
-┌──────────────────────────────────────────┐
-│ [logo]  EasyJet                          │
-│         LGW–AMS                          │
-│         Airbus A320                      │
-│         G-EUPX                           │
-│ 36,000ft  494mph                    ↑    │
-│ 332°  +0fpm                      7mi    │
-└──────────────────────────────────────────┘
-```
+**Don't feel like building one? Check out the official product: [theflightwall.com](https://theflightwall.com)**
 
-When multiple flights are in range the display cycles through them. Every field is individually configurable via the built-in web UI — no reflashing required.
+## Hardware and Firmware
 
----
+- Screen: Designed for a P2 128x64 HUB75 display ([Aliexpress P2 example](https://www.aliexpress.com/item/1005001958308355.html)- P2.5 and P3 sizes also available)
+- ESP32: [ESP32-Trinity](https://esp32trinity.com/), a plugin module for HUB75 screens
 
-## Hardware
+The ESP-Trinity is a well packaged module which plugs into a HUB75 screen and can also power the screen when used with a suitable USB-C power supply. 
+You can also use a standard ESP32 module and wire it accordingly.
 
-### Component list
+Firmware built with PlatformIO / Arduino framework, targeting the `wemos_d1_mini32` board profile (any ESP32 dev board works).
 
-| Component | Notes |
-|---|---|
-| [HUB75 LED panels × 20](https://www.aliexpress.us/item/2255800358269772.html) | Arranged 10 wide × 2 tall |
-| ESP32 dev board | We used the [R32 D1](https://www.amazon.com/HiLetgo-ESP-32-Development-Bluetooth-Arduino/dp/B07WFZCBH8); most ESP32 boards work |
-| 3D-printed brackets | STL files in `hardware/` |
-| 2× 63-inch wooden trim pieces | Horizontal support rails |
-| [5 V 20 A+ power supply](https://www.amazon.com/dp/B07KC55TJF) | Sized for 20 panels at full brightness |
-| [3.3 V–5 V level shifter](https://www.amazon.com/dp/B07F7W91LC) | Required between ESP32 data pin and panel |
 
-### Dimensions
+## Data and Software
 
-20 panels in a 10 × 2 arrangement — approximately 63 × 12.6 inches.
+### Data API Keys
 
-### Wiring
-
-![Wiring Diagram](images/wiring-diagram.png)
-
-All panels are driven by a single HUB75 data chain from the ESP32 via the level shifter. The 5 V supply powers the panels directly; the ESP32 is powered from USB or a separate 5 V rail.
-
-![Panel Wiring and Brackets](images/led-panel-wiring-and-brackets.jpg)
-
-The 3D-printed brackets slot the panels together edge-to-edge. MDF or cardboard works equally well for a first build.
-
----
-
-## Data sources
-
-| Source | What it provides | Required? |
-|---|---|---|
-| [OpenSky Network](https://opensky-network.org) | Live ADS-B positions and callsigns | Yes (fallback) |
-| [FlightAware AeroAPI](https://flightaware.com/aeroapi) | Route, airline, aircraft metadata | Yes (for route info) |
-| Local ADS-B receiver (tar1090 / dump1090 / readsb) | Same as OpenSky but from your own antenna | Optional |
-
-When a local receiver is configured it is used as the **primary** source; OpenSky acts as a transparent fallback. Fetch intervals are configured independently — a local receiver can refresh every few seconds without touching your API quota.
+The data for this project consists of two main data sources:
+1. Core public [ADS-B](https://en.wikipedia.org/wiki/Automatic_Dependent_Surveillance%E2%80%93Broadcast) data for flight positions and callsigns - using [OpenSky](https://opensky-network.org) 
+2. Flight information lookup - aircraft, airline, and route (origin/destination airport). This is typically the hardest / most expensive information to find. Using [FlightAware AeroAPI](https://flightaware.com/aeroapi) (PAID) and [hexdb.io](https://opensky-network.org) (FREE)
 
 ### Setting up OpenSky
-
-1. Register at [opensky-network.org](https://opensky-network.org)
-2. Go to **My Account → API Clients** and create a new client
-3. Copy the `client_id` and `client_secret`
+1. Register for an [OpenSky](https://opensky-network.org/) account
+2. Go to your [account page](https://opensky-network.org/my-opensky/account)
+3. Create a new API client and copy the `client_id` and `client_secret` to the [APIConfiguration.h](firmware/config/APIConfiguration.h.example) file
 
 ### Setting up AeroAPI
+1. Go to the [FlightAware AeroAPI](https://flightaware.com/aeroapi) page and create a personal account
+2. From the dashboard, open **API Keys**, click **Create API Key** and follow the steps
+3. Copy the generated key and add it to [APIConfiguration.h](firmware/config/APIConfiguration.h.example)
 
-1. Sign up at [flightaware.com/aeroapi](https://flightaware.com/aeroapi)
-2. Open **API Keys → Create API Key** in the dashboard
-3. Copy the generated key
+## Software Setup
 
-Both can be entered in `firmware/config/APIConfiguration.h` before flashing, or at any time via the web UI.
+### Set your WiFi
 
----
+On first boot, the ESP32 will broadcast an AP and you can configure it from there.
+Alternatively, enter your WiFi credentials into `WIFI_SSID` and `WIFI_PASSWORD` in [WifiConfiguration.h](firmware/config/WifiConfiguration.h)
 
-## Software setup
+### Set your location
 
-### 1. Configure before flashing
+On first boot, the ESP32 will broadcast an AP and you can configure it from there.
+Alternatively, set your location to track flights by updating the following values in [UserConfiguration.h](firmware/config/UserConfiguration.h.example):
 
-Edit the files in `firmware/config/` — defaults are already in place for most settings.
+- `CENTER_LAT`: Latitude of the center point to track (e.g., your home or city)
+- `CENTER_LON`: Longitude of the center point
+- `RADIUS_KM`: Search radius in kilometers for flights to include
 
-| File | What to set |
-|---|---|
-| `WiFiConfiguration.h` | `WIFI_SSID` and `WIFI_PASSWORD` (or leave blank for captive-portal setup) |
-| `APIConfiguration.h` | OpenSky credentials, AeroAPI key, optional local ADS-B host |
-| `UserConfiguration.h` | Your location (`CENTER_LAT`, `CENTER_LON`, `RADIUS_KM`) and display preferences |
-| `TimingConfiguration.h` | Fetch intervals, display cycle time, API cache TTLs |
-| `HardwareConfiguration.h` | Panel pixel dimensions and tile arrangement |
-
-### 2. Build and flash
-
-1. Install [VS Code](https://code.visualstudio.com/) and the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode)
-2. Open the `firmware/` folder in PlatformIO
-3. Connect the ESP32 via USB
-4. Click **Upload** (→) in the PlatformIO toolbar
-
-### 3. WiFi setup
-
-If no WiFi credentials are baked in, the device launches a captive-portal access point named **FlightWall-Setup** on first boot. Connect from any phone or laptop, enter your network details, and the device restarts and connects automatically.
-
----
-
-## Web configuration UI
-
-Once on WiFi, the device's IP address is shown briefly on the display at startup. Open it in a browser for the live configuration page — changes apply immediately without reflashing.
-
-### Display
-- **Brightness** (0–255) and **text colour** (RGB)
-- **Screen facing** — sets the compass direction the top of your screen faces, so the bearing arrow points the right way relative to your wall
-- **Flip 180°** — for installations where the USB port faces up
-- **Nearest flight only** — show only the closest aircraft instead of cycling
-- **Show border** — draws a 1 px frame around each card
-- **Flight number with logo** — when a logo is available, show the IATA flight number (e.g. EZY73CA) on line 1 instead of the airline name
-- **Show aircraft type / registration** — each can be toggled independently; when one is off the other is promoted to line 3
-- **Swap type and registration** — puts the registration on line 3 (larger) and the type on line 3b
-
-### Night mode
-- Scheduled brightness reduction based on local time
-- Configurable start/end time and nighttime brightness level (0 = screen off, API calls suppressed)
-- UTC offset for correct local time
-
-### Local ADS-B
-- Hostname or IP of a tar1090 / dump1090 / readsb receiver
-- Leave blank to use OpenSky only
-
-### Timing
-- Fetch interval — local ADS-B and OpenSky fallback set independently
-- Display cycle time per card
-- AeroAPI cache TTL (default 30 min) and fail-cache TTL for flights with no route data
-
-### API keys
-- OpenSky client ID and secret, AeroAPI key
-- Secret fields are masked — the current value is never echoed back to the browser
-
----
-
-## Airline logos
+### Logo Creation
 
 Logos are stored on the ESP32's own flash (LittleFS) as pre-dithered 32 × 32 px RGB565 bitmaps, one file per airline ICAO code. Flights without a matching logo fall back to a generic aircraft icon. See `firmware/adapters/LocalLogoStore` for the file format.
 
+A python script is provided in `tools/build_logos_local.py`.
+
+It requires a source of airline logos - I recommend [Jxck-S's](https://github.com/Jxck-S/airline-logos) repository - specifically the FlightAware logos.
+
+## Architecture
+
+```
+main.cpp
+  ├─ FallbackStateVectorFetcher    primary: Tar1090Fetcher ➜  fallback: OpenSkyFetcher
+  ├─ FlightDataFetcher             enriches state vectors with AeroAPI + CDN metadata
+  ├─ NeoMatrixDisplay              renders flight cards on the HUB75 panel
+  └─ WebConfig                     HTTP config + serial-log UI served on port 80
+```
+
+### Data flow (each fetch cycle)
+
+1. `FallbackStateVectorFetcher` fetches nearby aircraft positions – local ADS-B first, OpenSky if unavailable.
+2. `FlightDataFetcher` enriches each callsign: AeroAPI for route/airline/aircraft, FlightWall CDN for human-readable names, `LocalLogoStore` for the airline logo bitmap.  Results are cached in RAM (default 30 min) to minimize API calls.
+3. `NeoMatrixDisplay` cycles through the enriched `FlightInfo` list, rendering one card per `display_cycle_seconds`.
+
 ---
 
-## Thanks
+### Config files
 
-Thanks to everyone who has followed along and built their own!
+| File | Purpose |
+|---|---|
+| `config/UserConfiguration.h` | Location, radius, display defaults |
+| `config/APIConfiguration.h` | API credentials and endpoints (OpenSky, AeroAPI, tar1090 host) |
+| `config/TimingConfiguration.h` | Fetch intervals, timeouts, cache TTLs |
+| `config/HardwareConfiguration.h` | Panel resolution and tile layout |
+| `config/WifiConfiguration.h` | Compile-time WiFi credentials (optional – captive portal available) |
+| `config/RuntimeConfig.h/.cpp` | Mutable copy of all settings, backed by NVS (Preferences). All runtime changes go here. |
 
-If you'd rather buy than build: **[theflightwall.com](https://theflightwall.com)**
+All settings in the header files serve as **compile-time defaults**. On first boot `loadConfig()` writes them to NVS. After that the web UI can override any value and `saveConfig()` persists it – no reflash needed.
 
-Tag us in your builds — **@theflightwall** on Instagram ✈️
+### Key components
+
+#### Adapters (data in)
+- **`Tar1090Fetcher`** – HTTP GET `/tar1090/data/aircraft.json` from a local ADS-B receiver; parses position, registration (`r`), and aircraft type (`t`). Returns `false` when the host is not configured, triggering fallback.
+- **`OpenSkyFetcher`** – OAuth2 token fetch + `states/all` query filtered to a bounding box; parses the state vector array.
+- **`FallbackStateVectorFetcher`** – Wraps primary + secondary fetcher; tracks which source was used last cycle so `main.cpp` can apply the appropriate fetch interval.
+- **`AeroAPIFetcher`** – HTTPS GET `/flights/{ident}`; returns route, operator codes, aircraft type, and registration.
+- **`FlightWallFetcher`** – HTTPS GET of small JSON blobs from the FlightWall CDN: airline display names, aircraft type display names, airport IATA codes. Called once per new callsign, then cached.
+- **`LocalLogoStore`** – Loads pre-dithered 32×32 RGB565 bitmaps from LittleFS. One `.bin` file per airline ICAO code. No network call.
+
+#### Core
+- **`FlightDataFetcher`** – Orchestrates the full enrichment pipeline. Manages the in-RAM cache, applies live telemetry from the current state vector (altitude, speed, heading, vertical rate, distance, bearing), and fills registration/type from the local ADS-B source when AeroAPI doesn't provide them.
+
+#### Display
+- **`NeoMatrixDisplay`** – HUB75 matrix via `ESP32-HUB75-MatrixPanel-I2S-DMA`. Renders a 128×64 flight card with a 32×32 logo column on the left and five text lines on the right. On data refresh, only the two telemetry lines (altitude/speed and heading/vspeed/distance) are repainted in-place – the logo and route block are only cleared on a natural cycle advance, eliminating visible flicker.
+
+#### Utils
+- **`WebConfig`** – Single-file HTTP server (no external web framework). Serves the config/log UI, handles `GET /api/config` and `POST /api/config`, streams the serial log via `GET /api/log`.
+- **`WifiProvisioner`** – Captive-portal AP for first-boot WiFi setup. Saves credentials to NVS.
+- **`TelnetLogger`** – `Log.print/printf` wrapper; output appears on the serial monitor and in the web UI log pane simultaneously.
+
+---
+
+## Web UI
+
+The Web Interface allows a variety of options to be set, shows an approximation of what is currently on display and prints a serial output.
+
+![WebUI](images/WebUI.png)
+
+### Options:
+ - Local ADSB: set this to your tar1090 server
+ - Location: Set your Lat/Lon
+ - Search Radius
+ - Brightness
+ - Screen Orientation: Setting this calibrates the aircraft direction arrow
+ - Text Colour
+ - Nearest Flight Only: Setting this will show only the nearest flight instead of cycling those within range
+ - Show Border: (Yes... if you check the photos I broke a single LED off my frame)
+ - Flight Number with Logo: If a logo is available, the airline name is replaced by the flight number
+ - Show Aircraft Type
+ - Show Aircraft Registration
+ - Swap Order: Show Registration above Type
+ - Flip display 180° 
+ - Enable Night Dimming: When brightness set to 0, no API calls are made
+ - Fetch Interval Local: Tar1090 updates can update the current flight details (Speed, heading etc)
+ - Fetch Interval OpenSky
+ - Display Cycle: How long to show a flight on screen (when showing all in range)
+ - Cache timeouts
+ - API keys
+
+### ASCII Preview
+![Web_Buzz](images/Web_Buzz.png)![Real_Buzz](images/Buzz.jpg)
+
+---
+
+## Build and flash with PlatformIO
+
+The firmware can be built and uploaded to the ESP32 using [PlatformIO](https://platformio.org/)
+
+1. **Install PlatformIO**: 
+   - Install [VS Code](https://code.visualstudio.com/)
+   - Add the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode)
+
+2. **Configure your settings**:
+   - Copy `firmware/config/APIConfiguration.h.example` to `firmware/config/APIConfiguration.h` and add your API keys
+   - Copy `firmware/config/UserConfiguration.h.example` to `firmware/config/UserConfiguration.h` and set your location
+   - Adjust display hardware (pins, tile layout) in [HardwareConfiguration.h](firmware/config/HardwareConfiguration.h)
+
+3. **Build and upload**:
+   - Open the `firmware` folder in PlatformIO
+   - Connect your ESP32 via USB
+   - Click the "Upload" button (➜) in the PlatformIO toolbar under esp32dev
+   - Click "Build Filesystem Image" in the Platform submenu
+   - Click "Upload Filesystem Image" in the Platform submenu
