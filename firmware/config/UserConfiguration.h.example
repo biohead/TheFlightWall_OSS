@@ -1,0 +1,48 @@
+#pragma once
+
+#include <Arduino.h>
+
+namespace UserConfiguration
+{
+    // Location configuration — set to your location
+    static const double CENTER_LAT = 0.0;  // e.g. 53.587248 for Leeds Airport
+    static const double CENTER_LON = 0.0;  // e.g. -1.324954
+    static const double RADIUS_KM = 35.0;  // Search radius in km
+
+    // Display customization
+    // Brightness controls overall display brightness (0-255)
+    static const uint8_t DISPLAY_BRIGHTNESS = 155;
+
+    // RGB color for all text rendering on the LED matrix
+    static const uint8_t TEXT_COLOR_R = 255;
+    static const uint8_t TEXT_COLOR_G = 255;
+    static const uint8_t TEXT_COLOR_B = 255;
+
+    // Set to true to show only the nearest qualifying flight instead of cycling
+    static const bool DISPLAY_NEAREST_ONLY = false;
+
+    // Set to false to disable the 1px border drawn around each flight card
+    static const bool DISPLAY_BORDER = false;
+
+    // When a logo is available, show the flight number (e.g. "EZY73CA") on
+    // line 1 instead of the full airline name.  Set to false to always show
+    // the airline name regardless of whether a logo is present.
+    static const bool SHOW_FLIGHT_NUMBER_WITH_LOGO = true;
+
+    // Show the ICAO aircraft type (e.g. "Airbus A320") on line 3 of the card.
+    static const bool SHOW_AIRCRAFT_TYPE = true;
+
+    // Show the civil registration / tail number (e.g. "G-EUPX") on line 3b.
+    static const bool SHOW_AIRCRAFT_REGISTRATION = true;
+
+    // When both type and registration are shown, swap their positions so that
+    // registration appears on line 3 (larger) and type on line 3b.
+    static const bool SWAP_AIRCRAFT_TYPE_REG = false;
+
+    // Compass direction the TOP of this screen faces.  Used to orient the
+    // bearing arrow so it points toward the aircraft relative to the display.
+    // Valid values (case-sensitive):
+    //   N  NNE  NE  ENE  E  ESE  SE  SSE
+    //   S  SSW  SW  WSW  W  WNW  NW  NNW
+    static const char * const SCREEN_FACING = "N";
+}

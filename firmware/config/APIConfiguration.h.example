@@ -4,7 +4,7 @@
 
 namespace APIConfiguration
 {
-    // OpenSky API credentials
+    // OpenSky API credentials — register free at https://opensky-network.org
     static const char *OPENSKY_CLIENT_ID = "";
     static const char *OPENSKY_CLIENT_SECRET = "";
     static constexpr const char *OPENSKY_TOKEN_URL =
@@ -12,14 +12,19 @@ namespace APIConfiguration
 
     static constexpr const char *OPENSKY_BASE_URL = "https://opensky-network.org";
 
-    // FlightAware AeroAPI credentials
+    // FlightAware AeroAPI credentials — leave empty to skip AeroAPI calls
     static const char *AEROAPI_KEY = "";
     static constexpr const char *AEROAPI_BASE_URL = "https://aeroapi.flightaware.com/aeroapi";
 
-    // FlightWall CDN lookup
+    // Local ADS-B receiver (tar1090 / readsb / dump1090)
+    // Set to the IP or hostname of your receiver.  Leave empty to use OpenSky only.
+    static const char *TAR1090_HOST = "";
+
+    // FlightWall CDN lookup (no key required)
     static constexpr const char *FLIGHTWALL_CDN_BASE_URL = "https://cdn.theflightwall.com";
 
     // TLS behavior for external services
-    static const bool AEROAPI_INSECURE_TLS = true;
+    static const bool OPENSKY_INSECURE_TLS    = true;
+    static const bool AEROAPI_INSECURE_TLS    = true;
     static const bool FLIGHTWALL_INSECURE_TLS = true;
 }

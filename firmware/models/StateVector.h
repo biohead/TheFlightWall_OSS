@@ -6,6 +6,8 @@ struct StateVector
 {
     String icao24;
     String callsign;
+    String registration;    // tail number from local ADS-B db (tar1090 "r"), may be empty
+    String aircraft_type;   // ICAO type code from local ADS-B db (tar1090 "t"), may be empty
     String origin_country;
     long time_position = 0;
     long last_contact = 0;

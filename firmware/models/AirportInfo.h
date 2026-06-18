@@ -5,4 +5,6 @@
 struct AirportInfo
 {
     String code_icao;
+    String code_iata;
+    String name;
 };

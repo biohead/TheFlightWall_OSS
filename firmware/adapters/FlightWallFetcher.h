@@ -18,6 +18,9 @@ public:
                          String &outDisplayNameShort,
                          String &outDisplayNameFull);
 
+    // Looks up the IATA code for an airport given its ICAO code.
+    bool getAirportIata(const String &airportIcao, String &outIata);
+
 private:
     bool httpGetJson(const String &url, String &outPayload);
 };

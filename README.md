@@ -1,117 +1,160 @@
 # TheFlightWall
 
-TheFlightWall is an LED wall which shows live information of flights going by your window.
+TheFlightWall is an ESP32-powered HUB75 LED display that shows live flight information for aircraft passing over your location — airline, route, aircraft type, registration, altitude, speed, and a bearing arrow pointing toward the plane.
 
-This is the open source version with some basic guides to the panels, mounting them together, data services, and code. Check out our viral build video: [https://www.instagram.com/p/DLIbAtbJxPl](https://www.instagram.com/p/DLIbAtbJxPl)
+Check out the build video: [instagram.com/p/DLIbAtbJxPl](https://www.instagram.com/p/DLIbAtbJxPl)
 
-**Don't feel like building one? Check out the offical product: [theflightwall.com](https://theflightwall.com)**
+**Don't want to build one? Grab the official kit at [theflightwall.com](https://theflightwall.com)**
 
 ![Main Image](images/main-image.png)
-*Airline logo lookup will be added soon!*
 
-# Component List
-- Main components
-    - 20x [16x16 LED panels](https://www.aliexpress.us/item/2255800358269772.html)
-    - ESP32 dev board (we used the [R32 D1](https://www.amazon.com/HiLetgo-ESP-32-Development-Bluetooth-Arduino/dp/B07WFZCBH8) but any ESP dev board should work)
-    - 3D printed brackets (or MDF / cardboard)
-    - 2x 6ft wooden trim pieces (for support)
-- Power
-    - [5V >20A power supply](https://www.amazon.com/dp/B07KC55TJF) (for 20 panels)
-    - [3.3V - 5V voltage level shifter](https://www.amazon.com/dp/B07F7W91LC)
-- Data
-    - [OpenSky](https://opensky-network.org/) for ADS-B flight data
-    - [FlightAware AeroAPI](https://www.flightaware.com/commercial/aeroapi/) for route, aircraft, and airline information
+---
 
-# Hardware
+## What's on screen
 
-## Dimensions
+Each flight card shows:
 
-With 20 panels (10x2) - ~63 inches x ~12.6 inches
+```
+┌──────────────────────────────────────────┐
+│ [logo]  EasyJet                          │
+│         LGW–AMS                          │
+│         Airbus A320                      │
+│         G-EUPX                           │
+│ 36,000ft  494mph                    ↑    │
+│ 332°  +0fpm                      7mi    │
+└──────────────────────────────────────────┘
+```
 
-## LED Panels
-[These are the LED panels we used](https://www.aliexpress.us/item/2255800358269772.html), but any similar LED matrix should work.
+When multiple flights are in range the display cycles through them. Every field is individually configurable via the built-in web UI — no reflashing required.
 
-We designed 3D printable brackets to attach the panels together, this is one approach, but you could also use MDF board or even cardboard (as we did originally haha)
+---
 
-Then two 63 inch horizontal supports for extra strength. We bought wooden floor trim and cut it to size.
+## Hardware
 
-![LED Panel Wiring and Brackets](images/led-panel-wiring-and-brackets.jpg)
+### Component list
 
-Obviously this is just one way to hold them together, but we're sure there are better ways!
+| Component | Notes |
+|---|---|
+| [HUB75 LED panels × 20](https://www.aliexpress.us/item/2255800358269772.html) | Arranged 10 wide × 2 tall |
+| ESP32 dev board | We used the [R32 D1](https://www.amazon.com/HiLetgo-ESP-32-Development-Bluetooth-Arduino/dp/B07WFZCBH8); most ESP32 boards work |
+| 3D-printed brackets | STL files in `hardware/` |
+| 2× 63-inch wooden trim pieces | Horizontal support rails |
+| [5 V 20 A+ power supply](https://www.amazon.com/dp/B07KC55TJF) | Sized for 20 panels at full brightness |
+| [3.3 V–5 V level shifter](https://www.amazon.com/dp/B07F7W91LC) | Required between ESP32 data pin and panel |
 
-## Wiring
+### Dimensions
 
-Here is a wiring diagram for how to connect the whole system together.
+20 panels in a 10 × 2 arrangement — approximately 63 × 12.6 inches.
+
+### Wiring
 
 ![Wiring Diagram](images/wiring-diagram.png)
 
-The entire panel is controlled by one data line - simple electronics in exchange for very low refresh rates, don't expect any 60 FPS gaming on this panel!
+All panels are driven by a single HUB75 data chain from the ESP32 via the level shifter. The 5 V supply powers the panels directly; the ESP32 is powered from USB or a separate 5 V rail.
 
-# Data and Software
+![Panel Wiring and Brackets](images/led-panel-wiring-and-brackets.jpg)
 
-## Data API Keys
+The 3D-printed brackets slot the panels together edge-to-edge. MDF or cardboard works equally well for a first build.
 
-The data for this project consists of two main data sources:
-1. Core public [ADS-B](https://en.wikipedia.org/wiki/Automatic_Dependent_Surveillance%E2%80%93Broadcast) data for flight positions and callsigns - using [OpenSky](https://opensky-network.org)
-2. Flight information lookup - aircraft, airline, and route (origin/destination airport). This is typically the hardest / most expensive information to find. Using [FlightAware AeroAPI](https://flightaware.com/aeroapi)
+---
+
+## Data sources
+
+| Source | What it provides | Required? |
+|---|---|---|
+| [OpenSky Network](https://opensky-network.org) | Live ADS-B positions and callsigns | Yes (fallback) |
+| [FlightAware AeroAPI](https://flightaware.com/aeroapi) | Route, airline, aircraft metadata | Yes (for route info) |
+| Local ADS-B receiver (tar1090 / dump1090 / readsb) | Same as OpenSky but from your own antenna | Optional |
+
+When a local receiver is configured it is used as the **primary** source; OpenSky acts as a transparent fallback. Fetch intervals are configured independently — a local receiver can refresh every few seconds without touching your API quota.
 
 ### Setting up OpenSky
-1. Register for an [OpenSky](https://opensky-network.org/) account
-2. Go to your [account page](https://opensky-network.org/my-opensky/account)
-3. Create a new API client and copy the `client_id` and `client_secret` to the [APIConfiguration.h](firmware/config/APIConfiguration.h) file
 
+1. Register at [opensky-network.org](https://opensky-network.org)
+2. Go to **My Account → API Clients** and create a new client
+3. Copy the `client_id` and `client_secret`
 
 ### Setting up AeroAPI
-1. Go to the [FlightAware AeroAPI]([https://flightaware.com/aeroapi](https://flightaware.com/aeroapi)) page and create a personal account
-3. From the dashboard, open **API Keys**, click **Create API Key** and follow the steps
-8. Copy the generated key and add it to [APIConfiguration.h](firmware/config/APIConfiguration.h)
 
+1. Sign up at [flightaware.com/aeroapi](https://flightaware.com/aeroapi)
+2. Open **API Keys → Create API Key** in the dashboard
+3. Copy the generated key
 
-## Software Setup
+Both can be entered in `firmware/config/APIConfiguration.h` before flashing, or at any time via the web UI.
 
-### Set your WiFi
+---
 
-Enter your WiFi credentials into `WIFI_SSID` and `WIFI_PASSWORD` in [WiFiConfiguration.h](firmware/config/WiFiConfiguration.h)
+## Software setup
 
-### Set your location
+### 1. Configure before flashing
 
-Set your location to track flights by updating the following values in [UserConfiguration.h](firmware/config/UserConfiguration.h):
+Edit the files in `firmware/config/` — defaults are already in place for most settings.
 
-- `CENTER_LAT`: Latitude of the center point to track (e.g., your home or city)
-- `CENTER_LON`: Longitude of the center point
-- `RADIUS_KM`: Search radius in kilometers for flights to include
+| File | What to set |
+|---|---|
+| `WiFiConfiguration.h` | `WIFI_SSID` and `WIFI_PASSWORD` (or leave blank for captive-portal setup) |
+| `APIConfiguration.h` | OpenSky credentials, AeroAPI key, optional local ADS-B host |
+| `UserConfiguration.h` | Your location (`CENTER_LAT`, `CENTER_LON`, `RADIUS_KM`) and display preferences |
+| `TimingConfiguration.h` | Fetch intervals, display cycle time, API cache TTLs |
+| `HardwareConfiguration.h` | Panel pixel dimensions and tile arrangement |
 
-### Build and flash with PlatformIO
+### 2. Build and flash
 
-The firmware can be built and uploaded to the ESP32 using [PlatformIO](https://platformio.org/)
+1. Install [VS Code](https://code.visualstudio.com/) and the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode)
+2. Open the `firmware/` folder in PlatformIO
+3. Connect the ESP32 via USB
+4. Click **Upload** (→) in the PlatformIO toolbar
 
-1. **Install PlatformIO**: 
-   - Install [VS Code](https://code.visualstudio.com/)
-   - Add the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode)
+### 3. WiFi setup
 
-2. **Configure your settings**:
-   - Add your API keys to [APIConfiguration.h](firmware/config/APIConfiguration.h)
-   - Add your WiFi credentials to [WiFiConfiguration.h](firmware/config/WiFiConfiguration.h)
-   - Set your location (and optional display preferences) in [UserConfiguration.h](firmware/config/UserConfiguration.h)
-   - Adjust display hardware (pin, tile layout) in [HardwareConfiguration.h](firmware/config/HardwareConfiguration.h)
+If no WiFi credentials are baked in, the device launches a captive-portal access point named **FlightWall-Setup** on first boot. Connect from any phone or laptop, enter your network details, and the device restarts and connects automatically.
 
-3. **Build and upload**:
-   - Open the `firmware` folder in PlatformIO
-   - Connect your ESP32 via USB
-   - Click the "Upload" button (→) in the PlatformIO toolbar
+---
 
-### Customization
+## Web configuration UI
 
-- **Brightness**: Controls overall display brightness (0–255)
-  - Edit `DISPLAY_BRIGHTNESS` in [UserConfiguration.h](firmware/config/UserConfiguration.h)
-- **Text color**: RGB values used for all text/borders
-  - Edit `TEXT_COLOR_R`, `TEXT_COLOR_G`, `TEXT_COLOR_B` in [UserConfiguration.h](firmware/config/UserConfiguration.h)
+Once on WiFi, the device's IP address is shown briefly on the display at startup. Open it in a browser for the live configuration page — changes apply immediately without reflashing.
 
-We may add more customization options in the future, but of course this being open source the whole thing is customizable to your liking.
+### Display
+- **Brightness** (0–255) and **text colour** (RGB)
+- **Screen facing** — sets the compass direction the top of your screen faces, so the bearing arrow points the right way relative to your wall
+- **Flip 180°** — for installations where the USB port faces up
+- **Nearest flight only** — show only the closest aircraft instead of cycling
+- **Show border** — draws a 1 px frame around each card
+- **Flight number with logo** — when a logo is available, show the IATA flight number (e.g. EZY73CA) on line 1 instead of the airline name
+- **Show aircraft type / registration** — each can be toggled independently; when one is off the other is promoted to line 3
+- **Swap type and registration** — puts the registration on line 3 (larger) and the type on line 3b
 
-# Thanks
-We really appreciate all the support on this project!
+### Night mode
+- Scheduled brightness reduction based on local time
+- Configurable start/end time and nighttime brightness level (0 = screen off, API calls suppressed)
+- UTC offset for correct local time
 
-If you don't want to build one but still find it cool, check out our offical displays: **[https://theflightwall.com](https://theflightwall.com)**
+### Local ADS-B
+- Hostname or IP of a tar1090 / dump1090 / readsb receiver
+- Leave blank to use OpenSky only
 
-Excited to see your builds :) Tag @theflightwall on IG
+### Timing
+- Fetch interval — local ADS-B and OpenSky fallback set independently
+- Display cycle time per card
+- AeroAPI cache TTL (default 30 min) and fail-cache TTL for flights with no route data
+
+### API keys
+- OpenSky client ID and secret, AeroAPI key
+- Secret fields are masked — the current value is never echoed back to the browser
+
+---
+
+## Airline logos
+
+Logos are stored on the ESP32's own flash (LittleFS) as pre-dithered 32 × 32 px RGB565 bitmaps, one file per airline ICAO code. Flights without a matching logo fall back to a generic aircraft icon. See `firmware/adapters/LocalLogoStore` for the file format.
+
+---
+
+## Thanks
+
+Thanks to everyone who has followed along and built their own!
+
+If you'd rather buy than build: **[theflightwall.com](https://theflightwall.com)**
+
+Tag us in your builds — **@theflightwall** on Instagram ✈️
